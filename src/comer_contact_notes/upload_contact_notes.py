@@ -97,10 +97,10 @@ def upload_contact_notes(infile_path, output_dir, sandbox=False):
 
 
 def _save_created_report(results_list, output_dir, args_dicts):
-    """Save a csv report of newly-created Enrollments to send to Comer.
+    """Save a csv report of newly-created Contact Notes to send to Comer.
 
-    Save only new (to Noble) Enrollments, skipping any that were passed on
-    (possible duplicate found).
+    Save only new (to Noble) Contact Notes, skipping any that were passed on
+    (eg. possible duplicate found).
 
     :param results_list: list of result dicts
     :param output_dir: str path to directory where to save report file
@@ -108,13 +108,12 @@ def _save_created_report(results_list, output_dir, args_dicts):
     :return: None
     """
     today_datestr = date.today().strftime(OUTFILE_DATESTR_FORMAT)
-    filename = f"New_Noble_Enrollments_{today_datestr}.csv"
+    filename = f"New_Noble_Contact_Notes_{today_datestr}.csv"
     file_path = path.join(output_dir, filename)
 
     report_headers = (
-        NOBLE_ENROLLMENT_SF_ID,
+        NOBLE_CONTACT_NOTE_SF_ID,
         COMER_CONTACT_NOTE_SF_ID,
-        COLLEGE_SF_ID,
     )
 
     if results_list:
@@ -126,15 +125,15 @@ def _save_created_report(results_list, output_dir, args_dicts):
             writer.writeheader()
             for result, args_dict in zip(results_list, args_dicts):
                 if result[SUCCESS] == True:
-                    result[NOBLE_ENROLLMENT_SF_ID] = result[ID_RESULT]
-                    result[COLLEGE_SF_ID] = args_dict[COLLEGE_SF_ID]
+                    # mapping back from Salesforce to source headers for Comer
+                    result[NOBLE_CONTACT_NOTE_SF_ID] = result[ID_RESULT]
                     writer.writerow(result)
     else:
         with open(file_path, "w") as fhand:
             writer = csv.Writer(fhand)
-            writer.writerow("No new Noble enrollment objects saved.")
+            writer.writerow("No new Noble Contact Note objects saved.")
 
-    logger.info(f"Saved new Noble Enrollments report to {file_path}")
+    logger.info(f"Saved new Noble Contact Notes report to {file_path}")
 
 
 def _create_contact_notes(data_dicts):
@@ -198,39 +197,41 @@ def get_or_create_note(contact_note_dict):
         # doesn't matter if more than one, needs manual intervention regardless
         existing_sf_id = results["records"][0]["Id"]
         logger.error(
-            f"Conflicting Contact Note(s) {existing_sf_id} found for "
+            f"Conflicting Contact Note {existing_sf_id} found for "
             f"{contact_note_dict}. Skipping creation"
         )
         return {
             ID_RESULT: existing_sf_id,
             SUCCESS: False,
-            ERRORS: [f"Found conflicting enrollment {existing_sf_id}",],
+            ERRORS: [f"Found conflicting Contact Note {existing_sf_id}",],
         }
 
     return sf_connection.Contact_Note__c.create(contact_note_dict)
 
 
 def _log_results(results_list, action, original_data):
-    """Log results from bulk Enrollments action.
+    """Log results from Contact Note create action.
 
-    Log results from bulk action call, which may have processed bulk
-    updates, creates (aka 'inserts'), or deletes. Expects the following keys
-    in results_list dicts:
+    Log results from create_contact_notes. Input results_list structured as
+    if it were a ``simple_salesforce.Salesforce.bulk`` call for compatability
+    with bulk updates and deletes. Expects the following keys in
+    results_list dicts:
         - success
         - id
         - created
         - errors
 
-    :param results_list: list of result dicts returned from bulk call
+    :param results_list: list of result dicts, mimicking
+        ``simple_salesfoce.Salesforce.bulk`` result
     :param action: str action taken ('create', 'update', 'delete')
-    :param original_data: list of data dicts passed to the bulk operation
+    :param original_data: list of original data dicts from the input file
     :rtype: None
     """
-    logger.info(f"Logging results of bulk Enrollments {action} operation..")
+    logger.info(f"Logging results of bulk Contact Note {action} operation..")
     attempted = success_count = fail_count = 0
     for result, args_dict in zip(results_list, original_data):
         attempted += 1
-        if result[SUCCESS] == False:
+        if not result[SUCCESS]:
             fail_count += 1
             log_payload = {
                 "action": action,
@@ -238,13 +239,13 @@ def _log_results(results_list, action, original_data):
                 ERRORS: result[ERRORS],
                 "arguments": args_dict,
             }
-            logger.error(f"Failed Enrollment {action}: {log_payload}")
+            logger.error(f"Failed Contact Note {action}: {log_payload}")
         else:
             success_count += 1
-            logger.info(f"Successful Enrollment {action}: {result['id']}")
+            logger.info(f"Successful Contact Note {action}: {result['id']}")
 
     logger.info(
-        f"Bulk Enrollment {action}: {attempted} attempted, "
+        f"Contact Note {action}: {attempted} attempted, "
         f"{success_count} succeeded, {fail_count} failed."
     )
 
@@ -254,28 +255,24 @@ def _prep_row_for_salesforce(row_dict):
     data where necessary.
 
     Changes keys in the row_dict to Salesforce API fieldnames, filtering out
-    irrelevant keys (outside of the FIELD_CONVERSIONS lookup).
+    irrelevant keys (ie. those outside of the FIELD_CONVERSIONS lookup).
     After converting the keys, also checks for datetime fields and converts
     their values to Salesforce API-ready datestrings.
 
-    :param row: dict row of enrollment data
+    :param row: dict row of Contact Note data
     :return: new dict ready for Salesforce bulk action
     :rtype: dict
     """
+    # maps input headers to Salesforce field API names
     FIELD_CONVERSIONS = {
-        COLLEGE_SF_ID: enrollment_fields.COLLEGE_ID, # can't update
-        DATA_SOURCE: enrollment_fields.DATA_SOURCE,
-        DATE_LAST_VERIFIED: enrollment_fields.DATE_VERIFIED,
-        DEGREE_TEXT: enrollment_fields.DEGREE_TEXT,
-        DEGREE_TYPE: enrollment_fields.DEGREE_TYPE,
-        END_DATE: enrollment_fields.END_DATE,
-        MAJOR_TEXT: enrollment_fields.MAJOR_TEXT,
-        NOBLE_CONTACT_SF_ID: enrollment_fields.STUDENT_ID, # can't update
-        NOBLE_ENROLLMENT_SF_ID: enrollment_fields.ID,
-        START_DATE: enrollment_fields.START_DATE,
-        STATUS: enrollment_fields.STATUS,
-        WITHDRAWAL_CODE: enrollment_fields.WITHDRAWAL_CODE,
-        WITHDRAWAL_REASON: enrollment_fields.WITHDRAWAL_REASON,
+        NOBLE_CONTACT_SF_ID: contact_note_fields.CONTACT,
+        COMMENTS: contact_note_fields.COMMENTS,
+        COMM_STATUS: contact_note_fields.COMMUNICATION_STATUS,
+        DATE_OF_CONTACT: contact_note_fields.DATE_OF_CONTACT,
+        DISCUSSION_CATEGORY: contact_note_fields.DISCUSSION_CATEGORY,
+        INITIATED_BY_ALUM: contact_note_fields.INITIATED_BY_ALUM,
+        MODE: contact_note_fields.MODE_OF_COMMUNICATION,
+        SUBJECT: contact_note_fields.SUBJECT,
     }
 
     new_dict = dict()
@@ -285,9 +282,7 @@ def _prep_row_for_salesforce(row_dict):
             new_dict[api_name] = datum
 
     date_fields = (
-        enrollment_fields.DATE_VERIFIED,
-        enrollment_fields.START_DATE,
-        enrollment_fields.END_DATE,
+        contact_note_fields.DATE_OF_CONTACT,
     )
     for date_field in date_fields:
         source_datestr = new_dict.get(date_field, None)
