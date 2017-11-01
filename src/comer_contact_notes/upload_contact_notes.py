@@ -52,6 +52,9 @@ ERRORS = "errors"   # list
 ID_RESULT = "id"    # str safe id
 CREATED = "created" # bool
 
+# actions
+CREATE = "create"
+
 
 def upload_contact_notes(infile_path, output_dir, sandbox=False):
     """
@@ -64,7 +67,6 @@ def upload_contact_notes(infile_path, output_dir, sandbox=False):
     :return: path to output csv file
     :rtype: str
     """
-    sandbox = True # XXX for dev
     global sf_connection
     sf_connection = get_salesforce_connection(sandbox=sandbox)
     job_name = __file__.split(path.sep)[-1]
@@ -85,6 +87,11 @@ def upload_contact_notes(infile_path, output_dir, sandbox=False):
 
             # likely means it's a GCYC alum
             if not row[NOBLE_CONTACT_SF_ID]:
+                continue
+
+            # utmostu grade point calculator notes uploaded without a date of
+            # contact; skip
+            if not row[DATE_OF_CONTACT]:
                 continue
 
             if not row[NOBLE_CONTACT_NOTE_SF_ID]:
@@ -256,10 +263,12 @@ def _prep_row_for_salesforce(row_dict):
 
     Changes keys in the row_dict to Salesforce API fieldnames, filtering out
     irrelevant keys (ie. those outside of the FIELD_CONVERSIONS lookup).
-    After converting the keys, also checks for datetime fields and converts
-    their values to Salesforce API-ready datestrings.
+    After converting the keys, prepares row for simple_salesforce api:
+        - converts source datetime str to Salesforce-ready
+        - converts checkbox bools to python bools
+        - insert a default Subject where source is blank
 
-    :param row: dict row of Contact Note data
+    :param row_dict: dict row of Contact Note data
     :return: new dict ready for Salesforce bulk action
     :rtype: dict
     """
@@ -281,16 +290,25 @@ def _prep_row_for_salesforce(row_dict):
         if datum:
             new_dict[api_name] = datum
 
-    date_fields = (
-        contact_note_fields.DATE_OF_CONTACT,
-    )
-    for date_field in date_fields:
-        source_datestr = new_dict.get(date_field, None)
-        if source_datestr:
-            salesforce_datestr = make_salesforce_datestr(
-                source_datestr, SOURCE_DATESTR_FORMAT
-            )
-            new_dict[date_field] = salesforce_datestr
+    # Subject is required
+    DEFAULT_SUBJECT = "(note from spreadsheet)"
+    source_subject = new_dict.get(contact_note_fields.SUBJECT, None)
+    if not source_subject:
+        new_dict[contact_note_fields.SUBJECT] = DEFAULT_SUBJECT
+
+    # convert DATE_OF_CONTACT to salesforce-ready datestr
+    source_datestr = new_dict.get(contact_note_fields.DATE_OF_CONTACT, None)
+    if source_datestr:
+        salesforce_datestr = make_salesforce_datestr(
+            source_datestr, SOURCE_DATESTR_FORMAT
+        )
+        new_dict[contact_note_fields.DATE_OF_CONTACT] = salesforce_datestr
+
+    # INITIATED_BY_ALUM comes as str '1' or '0' (checkbox in Salesforce);
+    # convert to explicit bool for simple_salesforce api
+    source_initiated = new_dict.get(contact_note_fields.INITIATED_BY_ALUM, '0')
+    initiated_bool = bool(int(source_initiated))
+    new_dict[contact_note_fields.INITIATED_BY_ALUM] = initiated_bool
 
     return new_dict
 
