@@ -1,7 +1,7 @@
 """
 comer_contact_notes/cli.py
 
-CLI for src/upload_contact_notes.py, creating Contact Notes at Noble from Comer.
+CLI for upload_contact_notes.py, creating Contact Notes at Noble from Comer.
 """
 
 import argparse
