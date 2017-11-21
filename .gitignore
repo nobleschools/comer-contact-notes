@@ -5,6 +5,10 @@
 *.htm*
 old_imported/
 
+# aws/ops
+dist/
+deployment.zip
+
 # env
 activate
 
