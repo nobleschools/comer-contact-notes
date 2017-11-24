@@ -207,12 +207,8 @@ def get_or_create_note(contact_note_dict):
 
     results = sf_connection.query(contact_note_query)
     if results["totalSize"]:
-        # doesn't matter if more than one, needs manual intervention regardless
+        # doesn't matter if more than one
         existing_sf_id = results["records"][0]["Id"]
-        logger.error(
-            f"Conflicting Contact Note {existing_sf_id} found for "
-            f"{contact_note_dict}. Skipping creation"
-        )
         return {
             ID_RESULT: existing_sf_id,
             SUCCESS: False,
@@ -252,7 +248,7 @@ def _log_results(results_list, action, original_data):
                 ERRORS: result[ERRORS],
                 "arguments": args_dict,
             }
-            logger.error(f"Failed Contact Note {action}: {log_payload}")
+            logger.warn(f"Possible duplicate Contact Note: {log_payload}")
         else:
             success_count += 1
             logger.info(f"Successful Contact Note {action}: {result['id']}")
