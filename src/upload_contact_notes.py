@@ -8,7 +8,7 @@ Define upload_contact_notes function, which:
 """
 
 import csv
-from datetime import date
+from datetime import datetime
 from itertools import chain
 from os import path
 
@@ -119,8 +119,8 @@ def _save_created_report(results_list, output_dir, args_dicts):
     :param args_dicts: iterable of original args_dicts, to pull college SF ID
     :return: None
     """
-    today_datestr = date.today().strftime(OUTFILE_DATESTR_FORMAT)
-    filename = f"New_Noble_Contact_Notes_{today_datestr}.csv"
+    now_datetime = datetime.now().strftime(OUTFILE_DATESTR_FORMAT)
+    filename = f"New_Noble_Contact_Notes_{now_datetime}.csv"
     file_path = path.join(output_dir, filename)
 
     report_headers = (
