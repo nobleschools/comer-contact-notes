@@ -6,7 +6,7 @@ CLI for upload_contact_notes.py, creating Contact Notes at Noble from Comer.
 
 import argparse
 
-from comer_contact_notes import upload_contact_notes
+from src import upload_contact_notes
 
 
 def push_contact_notes(infile_path, output_dir=".", sandbox=False):
