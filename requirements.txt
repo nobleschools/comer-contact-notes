@@ -2,7 +2,7 @@ asn1crypto==0.23.0
 certifi==2017.7.27.1
 cffi==1.11.2
 chardet==3.0.4
--e git+https://github.com/NobleNetworkCharterSchools/comer-contact-notes.git@006ddb270a7f87cfd2aa7debc1949b6bb7006484#egg=comer_contact_notes
+-e git+https://github.com/NobleNetworkCharterSchools/comer-contact-notes.git@bb2b6b2c21e6d76fa9641ae90c52c90e1168ff3f#egg=comer_contact_notes
 cryptography==2.1.2
 elasticsearch==5.3.0
 idna==2.6
