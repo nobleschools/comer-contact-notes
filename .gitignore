@@ -3,7 +3,6 @@
 *.csv
 *.xls*
 *.htm*
-old_imported/
 
 # aws/ops
 dist/
