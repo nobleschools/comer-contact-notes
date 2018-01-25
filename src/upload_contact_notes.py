@@ -15,6 +15,7 @@ from os import path
 from salesforce_fields import contact_note as contact_note_fields
 from salesforce_fields import contact as contact_fields
 from salesforce_utils import (
+    get_or_create_contact_note,
     get_salesforce_connection,
     make_salesforce_datestr,
     salesforce_gen,
@@ -172,7 +173,7 @@ def _create_contact_notes(data_dicts):
     for contact_note_dict in data_dicts:
         comer_id = contact_note_dict[COMER_CONTACT_NOTE_SF_ID]
         salesforce_ready = _prep_row_for_salesforce(contact_note_dict)
-        result = get_or_create_note(salesforce_ready)
+        result = get_or_create_contact_note(sf_connection, salesforce_ready)
         # not added by non-bulk `create` call
         if result[SUCCESS]:
             result[CREATED] = True
@@ -183,39 +184,6 @@ def _create_contact_notes(data_dicts):
 
     _log_results(results, CREATE, data_dicts)
     return results
-
-
-def get_or_create_note(contact_note_dict):
-    """Look for an existing Contact Note with the same Contact, Subject, and
-    Date of Contact fields. Return that if exists, otherwise create.
-
-    :param contact_note_dict: dictionary of Contact Note details, with keys
-        already mapped to Salesforce API fieldnames and dates API-ready
-    :return: results dict (keys 'id', 'success', 'errors')
-    :rtype: dict
-    """
-    alum_sf_id = contact_note_dict[contact_note_fields.CONTACT]
-    subject = contact_note_dict[contact_note_fields.SUBJECT]
-    date_of_contact = contact_note_dict[contact_note_fields.DATE_OF_CONTACT]
-    contact_note_query = (
-        f"SELECT {contact_note_fields.ID} "
-        f"FROM {contact_note_fields.API_NAME} "
-        f"WHERE {contact_note_fields.CONTACT} = '{alum_sf_id}' "
-        f"AND {contact_note_fields.SUBJECT} = '{subject}' "
-        f"AND {contact_note_fields.DATE_OF_CONTACT} = {date_of_contact} "
-    )
-
-    results = sf_connection.query(contact_note_query)
-    if results["totalSize"]:
-        # doesn't matter if more than one
-        existing_sf_id = results["records"][0]["Id"]
-        return {
-            ID_RESULT: existing_sf_id,
-            SUCCESS: False,
-            ERRORS: [f"Found conflicting Contact Note {existing_sf_id}",],
-        }
-
-    return sf_connection.Contact_Note__c.create(contact_note_dict)
 
 
 def _log_results(results_list, action, original_data):
