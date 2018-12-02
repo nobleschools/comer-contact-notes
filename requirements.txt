@@ -2,14 +2,14 @@ asn1crypto==0.24.0
 certifi==2018.1.18
 cffi==1.11.4
 chardet==3.0.4
--e git+https://github.com/NobleNetworkCharterSchools/comer-contact-notes.git@a229d6f7374e9cd09427c605367a3eafc8c5dbd8#egg=comer_contact_notes
-cryptography==2.3
+-e git+https://github.com/NobleNetworkCharterSchools/comer-contact-notes.git@07739095c67855d53f0c40f13c4181659a7fdfb4#egg=comer_contact_notes
+cryptography==2.1.4
 elasticsearch==5.3.0
 idna==2.6
 noble-logging-utils==0.1
 pycparser==2.18
 pyOpenSSL==17.5.0
-requests==2.18.4
+requests==2.20.1
 salesforce-utils==0.1
 simple-salesforce==0.73.0
 six==1.11.0
